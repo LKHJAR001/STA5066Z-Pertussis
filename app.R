@@ -1,14 +1,7 @@
-
+rm(list = ls())
 library(deSolve)
 library(shiny)
 library(dplyr)
-
-rm(list = ls())
-
-
-
-
-
 
 #========================================================================
 #                       Hard-coded Incidence Data
@@ -36,9 +29,6 @@ Incidence_data <- as.data.frame(matrix(c(
 ), ncol = 4, byrow = TRUE))
 
 colnames(Incidence_data) <- c("Northeast","Midwest","West","South")
-
-
-
 
 
 A = 3
@@ -71,13 +61,9 @@ for (pop in c(pop1, pop2, pop3, pop4)){
 }
 
 
-
-
-
 #========================================================================
 #                         For Plots
 #========================================================================
-
 Mindex = 1+ 1:P
 Sindex = max(Mindex)+1:(A*P)
 Vindex = max(Sindex)+1:(A*P)
@@ -93,13 +79,11 @@ plotfunc_reg <- function(run, region = "Northeast", ymax = NULL, cex_pt = 0.9) {
   start_date <- as.Date("2022-01-01")
   times <- seq(start_date, by = "1 week", length.out = 189)
   
-  # ---- region indices ----
   if (region == "Northeast") { inds <- 1:A;           Mind <- 1
   } else if (region == "Midwest") { inds <- (A+1):(2*A);   Mind <- 2
   } else if (region == "West")    { inds <- (2*A+1):(3*A); Mind <- 3
   } else if (region == "South")   { inds <- (3*A+1):(4*A); Mind <- 4}
   
-  # ---- palette ----
   col_A    <- "#191970"  # A
   col_E    <- "#BF1F2B"  # E
   col_CnT  <- "#C79E5F"  # C^{over(T)}
@@ -110,7 +94,6 @@ plotfunc_reg <- function(run, region = "Northeast", ymax = NULL, cex_pt = 0.9) {
   col_M    <- "#F37022"  # M
   col_R    <- "#2323FF"  # R
   
-  # ---- shapes (pch) ----
   pch_A   <- 16  # solid circle
   pch_E   <- 17  # triangle
   pch_CnT <- 15  # square
@@ -121,7 +104,6 @@ plotfunc_reg <- function(run, region = "Northeast", ymax = NULL, cex_pt = 0.9) {
   pch_M   <- 2   # open triangle
   pch_R   <- 4   # x
   
-  # ---- data ----
   sA   <- rowSums(run[, Aindex[inds],   drop=FALSE], na.rm=TRUE)
   sE   <- rowSums(run[, Eindex[inds],   drop=FALSE], na.rm=TRUE)
   sCnT <- rowSums(run[, CnTindex[inds], drop=FALSE], na.rm=TRUE)
@@ -140,11 +122,9 @@ plotfunc_reg <- function(run, region = "Northeast", ymax = NULL, cex_pt = 0.9) {
   ymax2 =  max(y_all2, na.rm=TRUE) * 1.05
   yl2 = c(0, ymax2)
   
-  # ---- layout ----
   op <- par(mfrow=c(1,2), mar=c(4,4,3,1)+0.2, oma=c(0,0,0.5,0))
   on.exit(par(op), add=TRUE)
   
-  ## -------- Panel 1: clinical pipeline --------
   plot(times, sA, type="l", lwd=2, col=col_A, ylim = yl1,
        xlab="Date", ylab="Number of people")
   grid(nx=NA, ny=NULL, lty=3)
@@ -168,7 +148,6 @@ plotfunc_reg <- function(run, region = "Northeast", ymax = NULL, cex_pt = 0.9) {
          lty=1, lwd=2, pch=c(pch_A,pch_E,pch_CnT,pch_CT,pch_Tm),
          bty="n", inset=0.02, cex=0.95)
   
-  ## -------- Panel 2: population pools --------
   plot(times, sS, type="l", lwd=2, col=col_S,ylim = yl2,
        xlab="Date", ylab="Number of people")
   grid(nx=NA, ny=NULL, lty=3)
@@ -195,7 +174,6 @@ plotfunc_age <- function(run, age = "0", ymax = NULL, cex_pt = 0.9) {
   start_date <- as.Date("2022-01-01")
   times <- seq(start_date, by = "1 week", length.out = 189)
   
-  # ---- indices by age across all 4 regions ----
   if (age == "0") {
     inds <- c(1, A+1, 2*A+1, 3*A+1)
   } else if (age == "1") {
@@ -204,7 +182,6 @@ plotfunc_age <- function(run, age = "0", ymax = NULL, cex_pt = 0.9) {
     inds <- c(1, A+1, 2*A+1, 3*A+1) + 2
   }
   
-  # ---- palette (Hermès-inspired) ----
   col_A    <- "#191970"  # A
   col_E    <- "#BF1F2B"  # E
   col_CnT  <- "#C79E5F"  # C^{over(T)}
@@ -215,11 +192,9 @@ plotfunc_age <- function(run, age = "0", ymax = NULL, cex_pt = 0.9) {
   col_M    <- "#F37022"  # M
   col_R    <- "#2323FF"  # R
   
-  # ---- shapes (pch) ----
   pch_A   <- 16; pch_E <- 17; pch_CnT <- 15; pch_CT <- 18; pch_Tm <- 8
   pch_S   <- 1;  pch_V <- 0;  pch_M   <- 2; pch_R  <- 4
   
-  # ---- data ----
   sA   <- rowSums(run[, Aindex[inds],   drop=FALSE], na.rm=TRUE)
   sE   <- rowSums(run[, Eindex[inds],   drop=FALSE], na.rm=TRUE)
   sCnT <- rowSums(run[, CnTindex[inds], drop=FALSE], na.rm=TRUE)
@@ -237,7 +212,7 @@ plotfunc_age <- function(run, age = "0", ymax = NULL, cex_pt = 0.9) {
   y_all2 = c(sS, sV, sM, sR)
   ymax2 =  max(y_all2, na.rm=TRUE) * 1.05
   yl2 = c(0, ymax2)
-  # ---- layout ----
+
   op <- par(mfrow=c(1,2), mar=c(4,4,3,1)+0.2, oma=c(0,0,0.5,0))
   on.exit(par(op), add=TRUE)
   
@@ -293,8 +268,6 @@ plotfunc_age <- function(run, age = "0", ymax = NULL, cex_pt = 0.9) {
            bty="n", inset=0.02, cex=0.95)
   }
   
-  
-  
 
   if (age == '0'){agething  = '<1 years'}
   if (age == '1'){agething  = '1-10 years'}
@@ -317,7 +290,6 @@ CIncmat = function(run) {
 }
 
 
-
 plot_incidence = function(run, rho){
   mu  = CIncmat(run)* matrix(rho, nrow = t_period, ncol = P, byrow = TRUE) 
   op <- par(mfrow = c(2, 2), mar = c(4,4,3,1), oma = c(0,0,0,0)) 
@@ -329,8 +301,6 @@ plot_incidence = function(run, rho){
          main = patch_names[p], xlab="Date", ylab="Number of People")
     
     lines(times, mu[,p], col="#ff2800", lwd=3)               # fitted mean
-    # lines(lo[,p], col="grey70", lwd=1)              # 95% PI
-    # lines(hi[,p], col="grey70", lwd=1)
     
     legend("topleft", bty="n",
            legend=c("Observed","Fitted mean"),
@@ -338,11 +308,8 @@ plot_incidence = function(run, rho){
            pch=c(16, NA), lwd=c(NA,3))
   }
   # mtext(expression(hat(bold(theta))^{MLE[Poi]}), side=3, outer=TRUE, line=0.001, cex=2)
-  
   par(op)
 }
-
-
 
 
 #========================================================================
@@ -376,28 +343,12 @@ rhs_vec <- function(t, y, parms) {
     index = max(index)+1:(A*P)
     CIncmat = matrix(y[index], A, P)
     
-    # Maug <- rbind(Mmat, matrix(0, A-1, P))
-    # Nmat <- Maug + Smat + Vmat + Emat + Amat + CnTmat + CTmat + Tmmat + Rmat
-    # Q      <- (zetaA*Amat + zetanT*CnTmat + zetaT*CTmat) / Nmat          # A x P
-    # Tmat   <- C %*% Q                                                    # A x P
-    # beta_t <- beta0 * (1 + beta1 * cos(2*pi/52*(t - phi)))                 # 1 x P
-    # beta_t <- beta0 *  + beta2 * (1 + beta3 * cos(2*pi/beta4*(t - phi2)))                  # 1 x P
-    # beta_t <- beta0 * (1 + beta1*exp(-1/2*((t - phi1)/sig)^2))                 # 1 x P
-    # Lam    <- beta_t * (Tmat %*% t(W))                                   # A x P
-    
-    # betat_store <<- rbind(betat_store, beta_t)
-    # Lam_store <<- rbind(Lam_store, Lam)
-    
     Maug <- rbind(Mmat, matrix(0, A-1, P))
     Nmat <- Maug + Smat + Vmat + Emat + Amat + CnTmat + CTmat + Tmmat + Rmat
     
     Icell <- zetaA*Amat + zetanT*CnTmat + zetaT*CTmat
     Lam <- beta0 * (1 + beta1*exp(-1/2*((t - phi)/sig)^2))   * (Icell / Nmat)   # A x P
-    # Lam <- beta0 * (Icell / Nmat)   # A x P
-    
-    # Lam_store <<- rbind(Lam_store, Lam)
-    
-    
+
     
     dM  <- matrix(0, 1, P)
     dS  <- matrix(0, A, P)
@@ -411,8 +362,6 @@ rhs_vec <- function(t, y, parms) {
     dCInc <- matrix(0, A, P)
     
     dS  <- dS  + omegaV*Vmat + omegaR*Rmat - Lam*Smat - v*Smat
-    # dS  <- dS  + omegaV*Vmat + omegaR*Rmat - v*Smat
-    
     dV  <- dV  + v*Smat - omegaV*Vmat - (1-eps)*Lam*Vmat
     dE  <- dE  + Lam*Smat + (1-eps)*Lam*Vmat
     dE  <- dE  - ( pA*sigma + (1-pA)*(1-pT)*sigma + (1-pA)*pT*sigma )*Emat
@@ -494,7 +443,6 @@ rhs_vec <- function(t, y, parms) {
     list(c(dM, dS, dV, dE, dAs, dCnT, dCT, dTm, dR, dCInc))
   })
 }
-
 
 
 #========================================================================
@@ -603,9 +551,6 @@ ui <- fluidPage(
 )
 
 
-
-
-
 server <- function(input, output) {
   Mreact <- reactive({
     M <- matrix(
@@ -619,7 +564,6 @@ server <- function(input, output) {
     M
   })
 
-  
   b0react <- reactive({
     b0 <- c(
       input$Bus*pop1/(pop1+pop2+pop3+pop4)/52,
@@ -630,7 +574,6 @@ server <- function(input, output) {
     b0 / Pop[1, ]
   })
   
-
   
   parametersR <- reactive(
     list(
@@ -659,7 +602,6 @@ server <- function(input, output) {
     sig = matrix(c(rep(input$sig1, A), rep(input$sig2, A),rep(input$sig3, A), rep(input$sig4, A)), A, P, byrow = FALSE),
     phi = matrix(c(rep(input$phi1, A), rep(input$phi2, A),rep(input$phi3, A), rep(input$phi4, A)), A, P, byrow = FALSE)
     ))
-  
   
   
   y0react <- reactive({
