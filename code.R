@@ -1,5 +1,3 @@
-setwd("C:/Users/Jared/OneDrive - University of Cape Town/Documents/MMID/Assignment")
-
 #========================================================================
 #                             Data
 #========================================================================
@@ -1404,6 +1402,7 @@ image.plot(pRvals, etavals,log(S_store/apply(mu, 2, max)[4]),
            ylab = expression(7 / eta[list(a,p)]), 
            xlab = expression(rho^{plain("Res")}),
            main = "South", cex.lab = 1.5)
+
 
 
 
