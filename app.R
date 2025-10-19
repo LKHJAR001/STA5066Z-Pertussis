@@ -62,7 +62,7 @@ for (pop in c(pop1, pop2, pop3, pop4)){
 
 
 #========================================================================
-#                         For Plots
+#                 For Plots (Non-Drug Resistant Model)
 #========================================================================
 Mindex = 1+ 1:P
 Sindex = max(Mindex)+1:(A*P)
@@ -290,26 +290,255 @@ CIncmat = function(run) {
 }
 
 
-plot_incidence = function(run, rho){
+plot_incidence = function(run,run_res, rho){
   mu  = CIncmat(run)* matrix(rho, nrow = t_period, ncol = P, byrow = TRUE) 
+  mu_res = CIncmat(run_res)* matrix(rho, nrow = t_period, ncol = P, byrow = TRUE) 
   op <- par(mfrow = c(2, 2), mar = c(4,4,3,1), oma = c(0,0,0,0)) 
   patch_names <- c("Northeast","Midwest","West","South") 
   for (p in 1:P) {
     start_date <- as.Date("2022-01-01")
-    times <- seq(start_date, by = "1 week", length.out = 188)
+    times <- seq(start_date, by = "1 week", length.out = t_period)
     plot(times, Incidence_data[,p], type="p", pch=16, col="#19263B",
          main = patch_names[p], xlab="Date", ylab="Number of People")
     
-    lines(times, mu[,p], col="#ff2800", lwd=3)               # fitted mean
-    
+    lines(times, mu_res[,p], col="#ff2800", lwd=4)               # fitted mean
+    lines(times, mu[,p], col="#F37022", lwd=2)               # fitted mean
+
     legend("topleft", bty="n",
-           legend=c("Observed","Fitted mean"),
-           col=c("#19263B","#ff2800"),
-           pch=c(16, NA), lwd=c(NA,3))
+           legend=c("Observed","Fitted mean (Resistance)", "Fitted mean (No Resistance)"),
+           col=c("#19263B","#ff2800", "#F37022"),
+           pch=c(16, NA, NA), lwd=c(NA,4, 2))
   }
   # mtext(expression(hat(bold(theta))^{MLE[Poi]}), side=3, outer=TRUE, line=0.001, cex=2)
   par(op)
 }
+
+
+
+#========================================================================
+#                 For Plots (Drug Resistant Model)
+#========================================================================
+Mindex = 1+ 1:P
+Sindex = max(Mindex)+1:(A*P)
+Vindex = max(Sindex)+1:(A*P)
+Eindex = max(Vindex)+1:(A*P)
+Aindex = max(Eindex)+1:(A*P)
+CnTindex = max(Aindex)+1:(A*P)
+CTindex = max(CnTindex)+1:(A*P)
+Tmindex = max(CTindex)+1:(A*P)
+Rindex = max(Tmindex)+1:(A*P)
+CIncindex = max(Rindex)+1:(A*P)
+CTRindex= max(CIncindex) + 1:(A*P)
+
+plotfunc_reg_res <- function(run, region = "Northeast", ymax = NULL, cex_pt = 0.9) {
+  start_date <- as.Date("2022-01-01")
+  times <- seq(start_date, by = "1 week", length.out = 189)
+  
+  if (region == "Northeast") { inds <- 1:A;           Mind <- 1
+  } else if (region == "Midwest") { inds <- (A+1):(2*A);   Mind <- 2
+  } else if (region == "West")    { inds <- (2*A+1):(3*A); Mind <- 3
+  } else if (region == "South")   { inds <- (3*A+1):(4*A); Mind <- 4}
+  
+  col_A    <- "#191970"  # A
+  col_E    <- "#BF1F2B"  # E
+  col_CnT  <- "#C79E5F"  # C^{over(T)}
+  col_CT   <- "#008EC1"  # C^{(T)}
+  col_Tm   <- "#FFD300"  # T_m
+  col_S    <- "#FF2800"  # S
+  col_V    <- "#735D55"  # V
+  col_M    <- "#F37022"  # M
+  col_R    <- "#2323FF"  # R
+  col_CTR <- "#228B22" 
+  
+  pch_A   <- 16  # solid circle
+  pch_E   <- 17  # triangle
+  pch_CnT <- 15  # square
+  pch_CT  <- 18  # diamond
+  pch_Tm  <- 8   # star
+  pch_S   <- 1   # open circle
+  pch_V   <- 0   # open square
+  pch_M   <- 2   # open triangle
+  pch_R   <- 4   # x
+  pch_CTR <- 3
+  
+  sA   <- rowSums(run[, Aindex[inds],   drop=FALSE], na.rm=TRUE)
+  sE   <- rowSums(run[, Eindex[inds],   drop=FALSE], na.rm=TRUE)
+  sCnT <- rowSums(run[, CnTindex[inds], drop=FALSE], na.rm=TRUE)
+  sCT  <- rowSums(run[, CTindex[inds],  drop=FALSE], na.rm=TRUE)
+  sTm  <- rowSums(run[, Tmindex[inds],  drop=FALSE], na.rm=TRUE)
+  sCTR <- rowSums(run[, CTRindex[inds],  drop=FALSE], na.rm=TRUE)
+  
+  sS   <- rowSums(run[, Sindex[inds],   drop=FALSE], na.rm=TRUE)
+  sV   <- rowSums(run[, Vindex[inds],   drop=FALSE], na.rm=TRUE)
+  sM   <- as.numeric(run[, Mindex[Mind]])  # vector for points()
+  sR   <- rowSums(run[, Rindex[inds],   drop=FALSE], na.rm=TRUE)
+  
+  y_all1 <- c(sA, sE, sCnT, sCT, sTm, sCTR)
+  ymax1 <- max(y_all1, na.rm=TRUE) * 1.05
+  yl1 <- c(0, ymax1)
+  y_all2 = c(sS, sV, sM, sR)
+  ymax2 =  max(y_all2, na.rm=TRUE) * 1.05
+  yl2 = c(0, ymax2)
+  
+  op <- par(mfrow=c(1,2), mar=c(4,4,3,1)+0.2, oma=c(0,0,0.5,0))
+  on.exit(par(op), add=TRUE)
+  
+  plot(times, sA, type="l", lwd=2, col=col_A, ylim = yl1,
+       xlab="Date", ylab="Number of people")
+  grid(nx=NA, ny=NULL, lty=3)
+  lines(times, sE,   lwd=2, col=col_E)
+  lines(times, sCnT, lwd=2, col=col_CnT)
+  lines(times, sCT,  lwd=2, col=col_CT)
+  lines(times, sTm,  lwd=2, col=col_Tm)
+  lines(times, sCTR,  lwd=2, col=col_CTR)
+  
+  # add shapes
+  points(times, sA,   pch=pch_A,   cex=cex_pt, col=col_A)
+  points(times, sE,   pch=pch_E,   cex=cex_pt, col=col_E)
+  points(times, sCnT, pch=pch_CnT, cex=cex_pt, col=col_CnT)
+  points(times, sCT,  pch=pch_CT,  cex=cex_pt, col=col_CT)
+  points(times, sTm,  pch=pch_Tm,  cex=cex_pt, col=col_Tm)
+  points(times, sCTR,  pch=pch_CTR,  cex=cex_pt, col=col_CTR)
+  
+  legend("top",
+         legend=c(expression(A), expression(E),
+                  expression(C^{bar(T)}), expression(C^{T}),
+                  expression(T),expression(C^{paste("T, Res")})),
+         col=c(col_A,col_E,col_CnT,col_CT,col_Tm, col_CTR),
+         lty=1, lwd=2, pch=c(pch_A,pch_E,pch_CnT,pch_CT,pch_Tm, pch_CTR),
+         bty="n", inset=0.02, cex=0.95)
+  
+  plot(times, sS, type="l", lwd=2, col=col_S,ylim = yl2,
+       xlab="Date", ylab="Number of people")
+  grid(nx=NA, ny=NULL, lty=3)
+  lines(times, sV, lwd=2, col=col_V)
+  lines(times, sM, lwd=2, col=col_M)
+  lines(times, sR, lwd=2, col=col_R)
+  
+  # add shapes
+  points(times, sS, pch=pch_S, cex=cex_pt, col=col_S)
+  points(times, sV, pch=pch_V, cex=cex_pt, col=col_V)
+  points(times, sM, pch=pch_M, cex=cex_pt, col=col_M)
+  points(times, sR, pch=pch_R, cex=cex_pt, col=col_R)
+  
+  legend("top",
+         legend=c(expression(S), expression(V), expression(M), expression(R)),
+         col=c(col_S,col_V,col_M,col_R),
+         lty=1, lwd=2, pch=c(pch_S,pch_V,pch_M,pch_R),
+         bty="n", inset=0.02, cex=0.95)
+  
+  mtext(bquote(bold(.(region))), outer = TRUE, line = -2, cex = 1.1)
+}
+
+plotfunc_age_res <- function(run, age = "0", ymax = NULL, cex_pt = 0.9) {
+  start_date <- as.Date("2022-01-01")
+  times <- seq(start_date, by = "1 week", length.out = 189)
+  
+  if (age == "0") {
+    inds <- c(1, A+1, 2*A+1, 3*A+1)
+  } else if (age == "1") {
+    inds <- c(1, A+1, 2*A+1, 3*A+1) + 1
+  } else if (age == "2") {
+    inds <- c(1, A+1, 2*A+1, 3*A+1) + 2
+  }
+  
+  col_A    <- "#191970"  # A
+  col_E    <- "#BF1F2B"  # E
+  col_CnT  <- "#C79E5F"  # C^{over(T)}
+  col_CT   <- "#008EC1"  # C^{(T)}
+  col_Tm   <- "#FFD300"  # T_m
+  col_S    <- "#FF2800"  # S
+  col_V    <- "#735D55"  # V
+  col_M    <- "#F37022"  # M
+  col_R    <- "#2323FF"  # R
+  col_CTR <- "#228B22" 
+  
+  pch_A   <- 16; pch_E <- 17; pch_CnT <- 15; pch_CT <- 18; pch_Tm <- 8;  pch_CTR <- 3
+  pch_S   <- 1;  pch_V <- 0;  pch_M   <- 2; pch_R  <- 4
+  
+  sA   <- rowSums(run[, Aindex[inds],   drop=FALSE], na.rm=TRUE)
+  sE   <- rowSums(run[, Eindex[inds],   drop=FALSE], na.rm=TRUE)
+  sCnT <- rowSums(run[, CnTindex[inds], drop=FALSE], na.rm=TRUE)
+  sCT  <- rowSums(run[, CTindex[inds],  drop=FALSE], na.rm=TRUE)
+  sTm  <- rowSums(run[, Tmindex[inds],  drop=FALSE], na.rm=TRUE)
+  sCTR <- rowSums(run[, CTRindex[inds],  drop=FALSE], na.rm=TRUE)
+  
+  sS   <- rowSums(run[, Sindex[inds],   drop=FALSE], na.rm=TRUE)
+  sV   <- rowSums(run[, Vindex[inds],   drop=FALSE], na.rm=TRUE)
+  sM   <- rowSums(run[, Mindex,   drop=FALSE], na.rm=TRUE)
+  sR   <- rowSums(run[, Rindex[inds],   drop=FALSE], na.rm=TRUE)
+  
+  y_all1 <- c(sA, sE, sCnT, sCT, sTm, sCTR)
+  ymax1 <- max(y_all1, na.rm=TRUE) * 1.05
+  yl1 <- c(0, ymax1)
+  y_all2 = c(sS, sV, sM, sR)
+  ymax2 =  max(y_all2, na.rm=TRUE) * 1.05
+  yl2 = c(0, ymax2)
+  
+  op <- par(mfrow=c(1,2), mar=c(4,4,3,1)+0.2, oma=c(0,0,0.5,0))
+  on.exit(par(op), add=TRUE)
+  
+  plot(times, sA, type="l", lwd=2, col=col_A, ylim= yl1,
+       xlab="Date", ylab="Number of people")
+  grid(nx=NA, ny=NULL, lty=3)
+  lines(times, sE,   lwd=2, col=col_E)
+  lines(times, sCnT, lwd=2, col=col_CnT)
+  lines(times, sCT,  lwd=2, col=col_CT)
+  lines(times, sTm,  lwd=2, col=col_Tm)
+  lines(times, sCTR,  lwd=2, col=col_CTR)
+  
+  points(times, sA,   pch=pch_A,   cex=cex_pt, col=col_A)
+  points(times, sE,   pch=pch_E,   cex=cex_pt, col=col_E)
+  points(times, sCnT, pch=pch_CnT, cex=cex_pt, col=col_CnT)
+  points(times, sCT,  pch=pch_CT,  cex=cex_pt, col=col_CT)
+  points(times, sTm,  pch=pch_Tm,  cex=cex_pt, col=col_Tm)
+  points(times, sCTR,  pch=pch_CTR,  cex=cex_pt, col=col_CTR)
+  
+  legend("top",
+         legend=c(expression(A), expression(E),
+                  expression(C^{bar(T)}), expression(C^{T}),
+                  expression(T), expression(C^{paste("T, Res")})),
+         col=c(col_A,col_E,col_CnT,col_CT,col_Tm, col_CTR),
+         lty=1, lwd=2,
+         pch=c(pch_A,pch_E,pch_CnT,pch_CT,pch_Tm, pch_CTR),
+         bty="n", inset=0.02, cex=0.95)
+  
+  
+  plot(times, sS, type="l", lwd=2, col=col_S,ylim= yl2,
+       xlab="Date", ylab="Number of people")
+  grid(nx=NA, ny=NULL, lty=3)
+  lines(times, sV, lwd=2, col=col_V)
+  if (age == "0") {lines(times, sM, lwd=2, col=col_M)}
+  lines(times, sR, lwd=2, col=col_R)
+  
+  points(times, sS, pch=pch_S, cex=cex_pt, col=col_S)
+  points(times, sV, pch=pch_V, cex=cex_pt, col=col_V)
+  if (age == "0") {points(times, sM, pch=pch_M, cex=cex_pt, col=col_M)}
+  points(times, sR, pch=pch_R, cex=cex_pt, col=col_R)
+  
+  if (age == "0") {
+    legend("top",
+           legend=c(expression(S), expression(V), expression(M), expression(R)),
+           col=c(col_S,col_V,col_M,col_R),
+           lty=1, lwd=2,
+           pch=c(pch_S,pch_V,pch_M,pch_R),
+           bty="n", inset=0.02, cex=0.95)
+  } else {
+    legend("top",
+           legend=c(expression(S), expression(V), expression(R)),
+           col=c(col_S,col_V,col_R),
+           lty=1, lwd=2,
+           pch=c(pch_S,pch_V,pch_R),
+           bty="n", inset=0.02, cex=0.95)
+  }
+  
+  
+  if (age == '0'){agething  = '<1 years'}
+  if (age == '1'){agething  = '1-10 years'}
+  if (age == '2'){agething  = '10+ years'}
+  mtext(bquote(bold(.(agething))), outer = TRUE, line = -2, cex = 1.1)
+}
+
 
 
 #========================================================================
@@ -444,6 +673,146 @@ rhs_vec <- function(t, y, parms) {
   })
 }
 
+#========================================================================
+#                           Model (Drug-Resistance)
+#========================================================================
+
+rhs_vec_res <- function(t, y, parms) {
+  with(parms, {
+    index = 1:P
+    Mmat = matrix(y[index], 1, P)
+    # index = (max(index) + 1):(max(index) + A*P)
+    index = max(index)+1:(A*P)
+    Smat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    Vmat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    Emat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    Amat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    CnTmat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    CTmat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    Tmmat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    Rmat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    CIncmat = matrix(y[index], A, P)
+    index = max(index)+1:(A*P)
+    CTRmat = matrix(y[index], A, P)
+    
+    Maug <- rbind(Mmat, matrix(0, A-1, P))
+    Nmat <- Maug + Smat + Vmat + Emat + Amat + CnTmat + CTmat + Tmmat + Rmat
+    Icell <- zetaA*Amat + zetanT*CnTmat + zetaT*CTmat + zetaR*CTRmat
+    
+    Lam <- beta0 * (1 + beta1*exp(-1/2*((t - phi)/sig)^2))   * (Icell / Nmat)   # A x P
+    
+    
+    
+    dM  <- matrix(0, 1, P)
+    dS  <- matrix(0, A, P)
+    dV  <- matrix(0, A, P)
+    dE  <- matrix(0, A, P)
+    dAs <- matrix(0, A, P)
+    dCnT<- matrix(0, A, P)
+    dCT <- matrix(0, A, P)
+    dTm <- matrix(0, A, P)
+    dR  <- matrix(0, A, P)
+    dCInc <- matrix(0, A, P)
+    dCTR  <- matrix(0, A, P)
+    
+    
+    dS  <- dS  + omegaV*Vmat + omegaR*Rmat - Lam*Smat - v*Smat
+    
+    dV  <- dV  + v*Smat - omegaV*Vmat - (1-eps)*Lam*Vmat
+    dE  <- dE  + Lam*Smat + (1-eps)*Lam*Vmat
+    dE  <- dE  - ( pA*sigma + (1-pA)*(1-pT)*sigma + (1-pA)*pT*sigma )*Emat
+    dAs <- dAs + pA*sigma*Emat + delta*CnTmat - gammaI*Amat
+    dCnT<- dCnT+ (1-pA)*(1-pT)*sigma*Emat - delta*CnTmat
+    dCT <- dCT + (1-pA)*pT*sigma*Emat - (1-pR)*tau*CTmat - pR*tau*CTmat
+    dTm <- dTm + (1- pR)*tau*CTmat - gammaT*Tmmat - eta*Tmmat
+    dCTR <- dCTR + pR*tau*CTmat +  eta*Tmmat - gammaR*CTRmat
+    dR  <- dR  + gammaI*Amat + gammaT*Tmmat + gammaR*CTRmat - omegaR*Rmat
+    dCInc <- (1-pA)*pT*sigma*Emat  # incidence tracker
+    
+    #  Births, infant vaccine waning to S, and M dynamics
+    Ntot <- colSums(Nmat)               
+    dM[1, ] <- dM[1, ] + b0*pi0*Ntot - omegaM[1, ]*Mmat[1, ]
+    # Newborn S and M->S aging contribution
+    dS[1, ] <- dS[1, ] + b0*(1-pi0)*Ntot + omegaM[1, ]*Mmat[1, ]
+    if (A >= 2) {dS[2, ] <- dS[2, ] + alphas[1, ]*Mmat[1, ]}
+    
+    # Aging
+    # a = 1
+    dM[1, ]   = dM[1, ]   - alphas[1, ] * Mmat[1, ]
+    dS[1, ]   = dS[1, ]   - alphas[1, ] * Smat[1, ]
+    dV[1, ]   = dV[1, ]   - alphas[1, ] * Vmat[1, ]
+    dE[1, ]   = dE[1, ]   - alphas[1, ] * Emat[1, ]
+    dAs[1, ]  = dAs[1, ]  - alphas[1, ] * Amat[1, ]
+    dCnT[1, ] = dCnT[1, ] - alphas[1, ] * CnTmat[1, ]
+    dCT[1, ]  = dCT[1, ]  - alphas[1, ] * CTmat[1, ]
+    dTm[1, ]  = dTm[1, ]  - alphas[1, ] * Tmmat[1, ]
+    dR[1, ]   = dR[1, ]   - alphas[1, ] * Rmat[1, ]
+    dCTR[1, ]   = dCTR[1, ]   - alphas[1, ] * CTRmat[1, ]
+    
+    # a != 1 && a!=A
+    if (A> 2){
+      dS[c(2:(A-1)), ]   = dS[c(2:(A-1)), ]   - alphas[c(2:(A-1)), ] * Smat[c(2:(A-1)), ]   + alphas[c(1:(A-2)), ] * Smat[c(1:(A-2)), ]
+      dV[c(2:(A-1)), ]   = dV[c(2:(A-1)), ]   - alphas[c(2:(A-1)), ] * Vmat[c(2:(A-1)), ]   + alphas[c(1:(A-2)), ] * Vmat[c(1:(A-2)), ]
+      dE[c(2:(A-1)), ]   = dE[c(2:(A-1)), ]   - alphas[c(2:(A-1)), ] * Emat[c(2:(A-1)), ]   + alphas[c(1:(A-2)), ] * Emat[c(1:(A-2)), ]
+      dAs[c(2:(A-1)), ]  = dAs[c(2:(A-1)), ]  - alphas[c(2:(A-1)), ] * Amat[c(2:(A-1)), ]   + alphas[c(1:(A-2)), ] * Amat[c(1:(A-2)), ]
+      dCnT[c(2:(A-1)), ] = dCnT[c(2:(A-1)), ] - alphas[c(2:(A-1)), ] * CnTmat[c(2:(A-1)), ] + alphas[c(1:(A-2)), ] * CnTmat[c(1:(A-2)), ]
+      dCT[c(2:(A-1)), ]  = dCT[c(2:(A-1)), ]  - alphas[c(2:(A-1)), ] * CTmat[c(2:(A-1)), ]  + alphas[c(1:(A-2)), ] * CTmat[c(1:(A-2)), ]
+      dTm[c(2:(A-1)), ]  = dTm[c(2:(A-1)), ]  - alphas[c(2:(A-1)), ] * Tmmat[c(2:(A-1)), ]  + alphas[c(1:(A-2)), ] * Tmmat[c(1:(A-2)), ]
+      dR[c(2:(A-1)), ]   = dR[c(2:(A-1)), ]   - alphas[c(2:(A-1)), ] * Rmat[c(2:(A-1)), ]   + alphas[c(1:(A-2)), ] * Rmat[c(1:(A-2)), ]
+      dCTR[c(2:(A-1)), ]   = dCTR[c(2:(A-1)), ]   - alphas[c(2:(A-1)), ] * CTRmat[c(2:(A-1)), ]   + alphas[c(1:(A-2)), ] * CTRmat[c(1:(A-2)), ]
+    }
+    
+    # a==A
+    dS[A, ]   = dS[A, ]   + alphas[A-1, ] * Smat[A-1, ]
+    dV[A, ]   = dV[A, ]   + alphas[A-1, ] * Vmat[A-1, ]
+    dE[A, ]   = dE[A, ]   + alphas[A-1, ] * Emat[A-1, ]
+    dAs[A, ]  = dAs[A, ]  + alphas[A-1, ] * Amat[A-1, ]
+    dCnT[A, ] = dCnT[A, ] + alphas[A-1, ] * CnTmat[A-1, ]
+    dCT[A, ]  = dCT[A, ]  + alphas[A-1, ] * CTmat[A-1, ]
+    dTm[A, ]  = dTm[A, ]  + alphas[A-1, ] * Tmmat[A-1, ]
+    dR[A, ]   = dR[A, ]   + alphas[A-1, ] * Rmat[A-1, ]
+    dCTR[A, ]   = dCTR[A, ]   + alphas[A-1, ] * CTRmat[A-1, ]
+    
+    
+    
+    # Migration
+    B <- Marr[, , 1]                     # P x P
+    diag(B) <- -rowSums(Marr[, ,1 ]) 
+    
+    dS  <- dS  + Smat  %*% B
+    dV  <- dV  + Vmat  %*% B
+    dE  <- dE  + Emat  %*% B
+    dAs <- dAs + Amat  %*% B
+    dCnT<- dCnT+ CnTmat%*% B
+    dCT <- dCT + CTmat %*% B
+    dTm <- dTm + Tmmat %*% B
+    dR  <- dR  + Rmat  %*% B
+    dCTR  <- dCTR  + CTRmat  %*% B
+    dM[1, ] <- dM[1, ] + Mmat[1, ] %*% B
+    
+    # Mortality
+    dM[1, ] <- dM[1, ] - mus[1, ]*Mmat[1, ]
+    dS  <- dS  - mus*Smat
+    dV  <- dV  - mus*Vmat
+    dE  <- dE  - mus*Emat
+    dAs <- dAs - mus*Amat
+    dCnT<- dCnT- mus*CnTmat
+    dCT <- dCT - mus*CTmat
+    dTm <- dTm - mus*Tmmat
+    dR  <- dR  - mus*Rmat
+    dCTR  <- dCTR  - mus*CTRmat
+    
+    list(c(dM, dS, dV, dE, dAs, dCnT, dCT, dTm, dR, dCInc, dCTR))
+  })
+}
 
 #========================================================================
 #                              UI
@@ -452,96 +821,155 @@ rhs_vec <- function(t, y, parms) {
 ui <- fluidPage(
   withMathJax(),
   tabsetPanel(
-    id = "panels",
+    id = "outer_tabs",
     tabPanel(
       title = strong("Pertussis Transmission Model"),
-      titlePanel("Parameters"),
+      titlePanel("Parameter Values"),
       sidebarLayout(
         sidebarPanel(
-          sliderInput("V0", label = "Initial Vaccinated Population", value = 0.25, min = 0, max = 1, step = 0.01),
-          sliderInput("R0", label = "Initial Recovered Population", value = 0.25, min = 0, max = 1, step = 0.01),
-          
-          sliderInput("beta10", label = HTML("Baseline transmission (Northeast) \\(\\beta_{1}^{0}\\)"), min = 0, max = 2, value = 0.29, step = 0.01),
-          sliderInput("beta20", label = HTML("Baseline transmission (Midwest) \\(\\beta_{2}^{0}\\)"),  min = 0, max = 2, value = 0.247, step = 0.01),
-          sliderInput("beta30", label = HTML("Baseline transmission (West) \\(\\beta_{3}^{0}\\)"),     min = 0, max = 2, value = 0.268, step = 0.01),
-          sliderInput("beta40", label = HTML("Baseline transmission (South) \\(\\beta_{4}^{0}\\)"),     min = 0, max = 2, value = 0.263, step = 0.01),
-          
-          sliderInput("beta11", label = HTML("Gaussian Amplitude (Northeast) \\(\\beta_{1}^{1}\\)"), min = 0, max = 10, value = 7.96, step = 0.01),
-          sliderInput("beta21", label = HTML("Gaussian Amplitude (Midwest) \\(\\beta_{2}^{1}\\)"),   min = 0, max = 10, value = 7.24, step = 0.01),
-          sliderInput("beta31", label = HTML("Gaussian Amplitude (West) \\(\\beta_{3}^{1}\\)"),      min = 0, max = 10, value = 6.64, step = 0.01),
-          sliderInput("beta41", label = HTML("Gaussian Amplitude (South) \\(\\beta_{4}^{1}\\)"),     min = 0, max = 10, value = 6.29, step = 0.01),
-          
-          sliderInput("sig1", label = HTML("Gaussian Width (Northeast) \\(\\sigma_{1}^G\\)"), min = 0.5, max = 20, value = 6.34, step = 0.01),
-          sliderInput("sig2", label = HTML("Gaussian Width (Midwest) \\(\\sigma_{2}^G\\)"),   min = 0.5, max = 20, value = 10.04, step = 0.01),
-          sliderInput("sig3", label = HTML("Gaussian Width (West) \\(\\sigma_{3}^G\\)"),      min = 0.5, max = 20, value = 8.55, step = 0.01),
-          sliderInput("sig4", label = HTML("Gaussian Width (South) \\(\\sigma_{4}^G\\)"),     min = 0.5, max = 20, value = 9.34, step = 0.01),
-          
-          sliderInput("phi1", label = HTML("Gaussian Centre (Northeast) \\(\\phi_{1}\\)"), min = 0.5, max = 188, value = 116, step = 0.01),
-          sliderInput("phi2", label = HTML("Gaussian Centre (Midwest) \\(\\phi_{2}\\)"),   min = 0.5, max = 188, value = 127, step = 0.01),
-          sliderInput("phi3", label = HTML("Gaussian Centre (West) \\(\\phi_{3}\\)"),      min = 0.5, max = 188, value = 129, step = 0.01),
-          sliderInput("phi4", label = HTML("Gaussian Centre (South) \\(\\phi_{4}\\)"),     min = 0.5, max = 188, value = 130, step = 0.01),
-          
-          sliderInput("m12", label = HTML("Number of yearly migrants: Northeast to Midwest"), min = 0, max = 1e6, value = 192109/3, step = 1),
-          sliderInput("m13", label = HTML("Number of yearly migrants: Northeast to West"),    min = 0, max = 1e6, value = 192109/3, step = 1),
-          sliderInput("m14", label = HTML("Number of yearly migrants: Northeast to South"),   min = 0, max = 1e6, value = 192109/3, step = 1),
-          sliderInput("m21", label = HTML("Number of yearly migrants: Midwest to Northeast"), min = 0, max = 1e6, value = 49214/3, step = 1),
-          sliderInput("m23", label = HTML("Number of yearly migrants: Midwest to West"),      min = 0, max = 1e6, value = 49214/3, step = 1),
-          sliderInput("m24", label = HTML("Number of yearly migrants: Midwest to South"),     min = 0, max = 1e6, value = 49214/3, step = 1),
-          sliderInput("m31", label = HTML("Number of yearly migrants: West to Northeast"),    min = 0, max = 1e6, value = 169681/3, step = 1),
-          sliderInput("m32", label = HTML("Number of yearly migrants: West to Midwest"),      min = 0, max = 1e6, value = 169681/3, step = 1),
-          sliderInput("m34", label = HTML("Number of yearly migrants: West to South"),        min = 0, max = 1e6, value = 169681/3, step = 1),
-          sliderInput("m41", label = HTML("Number of yearly migrants: South to Northeast"),   min = 0, max = 1e6, value = 0, step = 1),
-          sliderInput("m42", label = HTML("Number of yearly migrants: South to Midwest"),     min = 0, max = 1e6, value = 0, step = 1),
-          sliderInput("m43", label = HTML("Number of yearly migrants: South to West"),        min = 0, max = 1e6, value = 0, step = 1),
-          
-          sliderInput("zetaA", label = HTML("Relative Infectiousness: Asymptomatic \\(\\zeta^{A}\\)"), min = 0, max = 1, value = 0.7, step = 0.01),
-          sliderInput("V_tot", label = HTML("Number of yearly DTaP/Tdap vaccines"), min = 0, max = 1e8, value = 503068145/12, step = 1e4),
-          
-          sliderInput("eps1", label = HTML("Vaccine efficacy: <1 years"),  min = 0, max = 1, value = 0.8, step = 0.01),
-          sliderInput("eps2", label = HTML("Vaccine efficacy: 1–10 years"),    min = 0, max = 1, value = 0.8, step = 0.01),
-          sliderInput("eps3", label = HTML("Vaccine efficacy: ≥ 10 years"),    min = 0, max = 1, value = 0.5, step = 0.01),
-          
-          sliderInput("pA1", label = HTML("Proportion Asymptomatic: <1 years"), min = 0, max = 1, value = 0.1, step = 0.01),
-          sliderInput("pA2", label = HTML("Proportion Asymptomatic: 1–10 years"),   min = 0, max = 1, value = 0.3, step = 0.01),
-          sliderInput("pA3", label = HTML("Proportion Asymptomatic: ≥ 10 years"),   min = 0, max = 1, value = 0.6, step = 0.01),
-          
-          sliderInput("pT1", label = HTML("Proportion who seek treatment: <1 years"), min = 0, max = 1, value = 0.8, step = 0.01),
-          sliderInput("pT2", label = HTML("Proportion who seek treatment: 1–10 years"),    min = 0, max = 1, value = 0.4, step = 0.01),
-          sliderInput("pT3", label = HTML("Proportion who seek treatment: ≥ 10 years"),    min = 0, max = 1, value = 0.4, step = 0.01),
-          
-          sliderInput("ssigma",  label = "Latency period (days)",                  min = 3, max = 50, value = 7, step = 1),
-          sliderInput("ddelta",  label = "Loss of symptoms period (days)",         min = 3, max = 50, value = 14,  step = 1),
-          sliderInput("ggammaI", label = "Recovery period: Non-treated (days)",    min = 3, max = 50, value = 21,  step = 1),
-          sliderInput("ggammaT", label = "Recovery period: Treated (days)",        min = 3, max = 50, value = 5,  step = 1),
-          
-          sliderInput("ttau1", label = "Treatment seeking period: <1 years (days)", min = 3, max = 50, value = 5.6, step = 1),
-          sliderInput("ttau2", label = "Treatment seeking period: 1–10 years (days)",     min = 3, max = 50, value = 13.8, step = 1),
-          sliderInput("ttau3", label = "Treatment seeking period: ≥ 10 years (days)",     min = 3, max = 50, value = 13.8, step = 1),
-          
-          sliderInput("oomegaM", label = "Maternal immunity period (weeks)", min = 0, max = 52, value = 1/(7*log(2)/30), step = 1),
-          sliderInput("oomegaR", label = "Natural immunity period (years)",  min = 0, max = 50, value = 30, step = 1),
-          sliderInput("oomegaV", label = "Vaccination immunity period (years)", min = 0, max = 50, value = 4, step = 1),
-          
-          sliderInput("Dus", label = HTML("Number of yearly deaths"),  min = 0, max = 1e7, value = 3287000,  step = 100),
-          sliderInput("Bus", label = HTML("Number of yearly births"),  min = 0, max = 1e7, value = 3622673,  step = 100),
-          sliderInput("pi0", label = HTML("Proportion of maternally immune births"), min = 0, max = 1, value = 0.55, step = 0.01),
-          
-          sliderInput("rho_rep1", label = HTML("Reporting %: Northeast "), min = 0, max = 1, value = 0.95, step = 0.01),
-          sliderInput("rho_rep2", label = HTML("Reporting %: Midwest "), min = 0, max = 1, value = 0.95, step = 0.01),
-          sliderInput("rho_rep3", label = HTML("Reporting %: West "), min = 0, max = 1, value = 0.95, step = 0.01),
-          sliderInput("rho_rep4", label = HTML("Reporting %: South "), min = 0, max = 1, value = 0.95, step = 0.01)
-          
+          tabsetPanel(
+            id = "sidebar_tabs",
+            
+            tabPanel("Initial Values",
+                     h4("Initial Values"),
+                     sliderInput("V0", "Initial Vaccinated Population", 0, 1,0.25, 0.01),
+                     sliderInput("R0", "Initial Recovered Population", 0, 1, 0.25, 0.01)
+            ),
+            
+            tabPanel("Force of Infection",
+                     h4(HTML("Baseline transmission \\(\\beta^{0}\\)")),
+                     sliderInput("beta10", HTML("Northeast \\(\\beta_{1}^{0}\\)"), 0, 2, 0.34, 0.01),
+                     sliderInput("beta20", HTML("Midwest \\(\\beta_{2}^{0}\\)"),   0, 2, 0.22, 0.01),
+                     sliderInput("beta30", HTML("West \\(\\beta_{3}^{0}\\)"),      0, 2, 0.35, 0.01),
+                     sliderInput("beta40", HTML("South \\(\\beta_{4}^{0}\\)"),     0, 2, 0.38, 0.01),
+                     
+                     tags$hr(), 
+                     h4(HTML("Gaussian bump")),
+                     
+                     sliderInput("beta11", HTML("Amplitude NE \\(\\beta_{1}^{1}\\)"), 0, 10, 5.52, 0.01),
+                     sliderInput("beta21", HTML("Amplitude MW \\(\\beta_{2}^{1}\\)"), 0, 10, 6.56, 0.01),
+                     sliderInput("beta31", HTML("Amplitude W  \\(\\beta_{3}^{1}\\)"), 0, 10, 3.76, 0.01),
+                     sliderInput("beta41", HTML("Amplitude S  \\(\\beta_{4}^{1}\\)"), 0, 10, 2.59, 0.01),
+                     
+                     sliderInput("sig1",  HTML("Width NE \\(\\sigma_{1}^{G}\\)"), 0.5, 20, 5.29, 0.01),
+                     sliderInput("sig2",  HTML("Width MW \\(\\sigma_{2}^{G}\\)"), 0.5, 20, 10.01, 0.01),
+                     sliderInput("sig3",  HTML("Width W  \\(\\sigma_{3}^{G}\\)"), 0.5, 20, 6.68, 0.01),
+                     sliderInput("sig4",  HTML("Width S  \\(\\sigma_{4}^{G}\\)"), 0.5, 20, 6.25, 0.01),
+                     
+                     sliderInput("phi1",  HTML("Centre NE \\(\\phi_{1}\\)"), 0.5, 188, 113, 0.01),
+                     sliderInput("phi2",  HTML("Centre MW \\(\\phi_{2}\\)"), 0.5, 188, 129, 0.01),
+                     sliderInput("phi3",  HTML("Centre W  \\(\\phi_{3}\\)"), 0.5, 188, 130, 0.01),
+                     sliderInput("phi4",  HTML("Centre S  \\(\\phi_{4}\\)"), 0.5, 188, 123, 0.01)
+            ),
+            
+            tabPanel("Migration",
+                     h4("Yearly migration flows"),
+                     sliderInput("m12", "NE → MW", 0, 1e6, 192109/3, 1),
+                     sliderInput("m13", "NE → W",  0, 1e6, 192109/3, 1),
+                     sliderInput("m14", "NE → S",  0, 1e6, 192109/3, 1),
+                     sliderInput("m21", "MW → NE", 0, 1e6, 49214/3,   1),
+                     sliderInput("m23", "MW → W",  0, 1e6, 49214/3,   1),
+                     sliderInput("m24", "MW → S",  0, 1e6, 49214/3,   1),
+                     sliderInput("m31", "W → NE",  0, 1e6, 169681/3,  1),
+                     sliderInput("m32", "W → MW",  0, 1e6, 169681/3,  1),
+                     sliderInput("m34", "W → S",   0, 1e6, 169681/3,  1),
+                     sliderInput("m41", "S → NE",  0, 1e6, 0,         1),
+                     sliderInput("m42", "S → MW",  0, 1e6, 0,         1),
+                     sliderInput("m43", "S → W",   0, 1e6, 0,         1)
+            ),
+            tabPanel("Vaccination",
+                     h4("Vaccination"),
+                     sliderInput("V_tot", "Yearly DTaP/Tdap vaccines", 
+                                 min = 0, max = 1e8, value = 503068145/12, step = 1e4),
+                     sliderInput("eps1",  HTML("Vaccine efficacy: <1 years"), 0, 1, 0.8, 0.01),
+                     sliderInput("eps2",  HTML("Vaccine efficacy: 1–10 years"), 0, 1, 0.8, 0.01),
+                     sliderInput("eps3",  HTML("Vaccine efficacy: ≥ 10 years"), 0, 1, 0.5, 0.01)
+            ),
+            tabPanel("Infectiousness",
+                     h4("Infectiousness"),
+                     sliderInput("zetaA", HTML("Relative Infectiousness: Asymptomatic \\(\\zeta^{A}\\)"), 
+                                 min = 0, max = 1, value = 0.7, step = 0.01),
+                     sliderInput("pA1",   HTML("Proportion Asymptomatic: <1 years"), 0, 1, 0.1, 0.01),
+                     sliderInput("pA2",   HTML("Proportion Asymptomatic: 1–10 years"), 0, 1, 0.3, 0.01),
+                     sliderInput("pA3",   HTML("Proportion Asymptomatic: ≥ 10 years"), 0, 1, 0.6, 0.01)
+            ),
+            
+            tabPanel("Transmission",
+                     sliderInput("ssigma",  "Latency period (days)", 3, 50, 7, 1),
+                     sliderInput("ddelta",  "Loss of symptoms period (days)", 3, 50, 14, 1),
+                     sliderInput("ggammaI", "Recovery period: Non-treated (days)", 3, 50, 21, 1),
+                     sliderInput("ggammaT", "Recovery period: Treated (days)",     3, 50, 5,  1)
+            ),
+            
+            tabPanel("Treatment Seeking",
+                     h4("Treatment Seeking"),
+                     sliderInput("pT1", "Proportion who seek treatment: <1 years", 0, 1, 0.8, 0.01),
+                     sliderInput("pT2", "Proportion who seek treatment: 1–10 years", 0, 1, 0.4, 0.01),
+                     sliderInput("pT3", "Proportion who seek treatment: ≥ 10 years", 0, 1, 0.4, 0.01),
+                     tags$hr(),
+                     sliderInput("ttau1", "Time to treatment: <1 years (days)", 3, 50, 5.6, 1),
+                     sliderInput("ttau2", "Time to treatment: 1–10 years (days)", 3, 50, 13.8, 1),
+                     sliderInput("ttau3", "Time to treatment: ≥ 10 years (days)", 3, 50, 13.8, 1)
+            ),
+            
+            tabPanel("Immunity",
+                     h4("Immunity"),
+                     sliderInput("oomegaM", "Maternal immunity period (weeks)", 0, 52, 1/(7*log(2)/30), 1),
+                     sliderInput("oomegaR", "Natural immunity period (years)",  0, 50, 30, 1),
+                     sliderInput("oomegaV", "Vaccination immunity period (years)", 0, 50, 4, 1),
+                     tags$hr(),
+                     sliderInput("pi0", "Proportion of maternally immune births", 0, 1, 0.55, 0.01)
+            ),
+            
+            tabPanel("Births and Deaths",
+                     h4("Demography"),
+                     sliderInput("Bus", "Number of yearly births",  0, 1e7, 3622673, 100),
+                     sliderInput("Dus", "Number of yearly deaths",  0, 1e7, 3287000, 100)
+            ),
+            
+            tabPanel("Reporting %",
+                     h4("Reporting by Region"),
+                     sliderInput("rho_rep1", "Reporting %: Northeast", 0, 1, 0.95, 0.01),
+                     sliderInput("rho_rep2", "Reporting %: Midwest",   0, 1, 0.95, 0.01),
+                     sliderInput("rho_rep3", "Reporting %: West",      0, 1, 0.95, 0.01),
+                     sliderInput("rho_rep4", "Reporting %: South",     0, 1, 0.95, 0.01)
+            ),
+            
+            tabPanel("Drug-Resistance",
+                     h4("Drug-Resistance"),
+                     sliderInput("pR",   HTML("Proportion whom have primary resistance \\(p^{Res}\\)"), 0, 1, 0.001, 0.001),
+                     sliderInput("etaa", HTML("Mean time to acquired drug-resistance (days)"), 3, 350, 50, 1),
+                     sliderInput("ggammaR", "Recovery period: Drug-Resistant (days)", 3, 50, 10, 1)
+            )
+          )
         ),
         mainPanel(
           tabsetPanel(
-            id = "panels",
-            tabPanel("Northeast", plotOutput("Northeast")),
-            tabPanel("Midwest",   plotOutput("Midwest")),
-            tabPanel("West",      plotOutput("West")),
-            tabPanel("South",     plotOutput("South")),
-            tabPanel("Age 0–1",   plotOutput("Age0")),
-            tabPanel("Age 1–10",  plotOutput("Age1")),
-            tabPanel("Age 10+",   plotOutput("Age2")),
+            id = "model_tabs",
+            tabPanel("Non Drug-Resistant Model",
+                     tabsetPanel(
+                       id = "nr_tabs",
+                       tabPanel("Northeast", plotOutput("Northeast_NR")),
+                       tabPanel("Midwest",   plotOutput("Midwest_NR")),
+                       tabPanel("West",      plotOutput("West_NR")),
+                       tabPanel("South",     plotOutput("South_NR")),
+                       tabPanel("Age 0–1",   plotOutput("Age0_NR")),
+                       tabPanel("Age 1–10",  plotOutput("Age1_NR")),
+                       tabPanel("Age 10+",   plotOutput("Age2_NR"))
+                     )
+            ),
+            tabPanel("Drug-Resistant Model",
+                     tabsetPanel(
+                       id = "r_tabs",
+                       tabPanel("Northeast", plotOutput("Northeast_R")),
+                       tabPanel("Midwest",   plotOutput("Midwest_R")),
+                       tabPanel("West",      plotOutput("West_R")),
+                       tabPanel("South",     plotOutput("South_R")),
+                       tabPanel("Age 0–1",   plotOutput("Age0_R")),
+                       tabPanel("Age 1–10",  plotOutput("Age1_R")),
+                       tabPanel("Age 10+",   plotOutput("Age2_R"))
+                     )
+            ),
             tabPanel("Incidence",   plotOutput("Incidence"))
           )
         )
@@ -549,6 +977,7 @@ ui <- fluidPage(
     )
   )
 )
+
 
 
 server <- function(input, output) {
@@ -574,7 +1003,7 @@ server <- function(input, output) {
     b0 / Pop[1, ]
   })
   
-  
+  # Parameters shared between both Models
   parametersR <- reactive(
     list(
     Marr = array(Mreact(), dim = c(P,P,A)), # migration not a function of age
@@ -600,10 +1029,16 @@ server <- function(input, output) {
     beta0 = matrix(c(rep(input$beta10, A), rep(input$beta20, A),rep(input$beta30, A), rep(input$beta40, A)), A, P, byrow = FALSE),
     beta1 =  matrix(c(rep(input$beta11, A), rep(input$beta21, A),rep(input$beta31, A), rep(input$beta41, A)), A, P, byrow = FALSE),
     sig = matrix(c(rep(input$sig1, A), rep(input$sig2, A),rep(input$sig3, A), rep(input$sig4, A)), A, P, byrow = FALSE),
-    phi = matrix(c(rep(input$phi1, A), rep(input$phi2, A),rep(input$phi3, A), rep(input$phi4, A)), A, P, byrow = FALSE)
+    phi = matrix(c(rep(input$phi1, A), rep(input$phi2, A),rep(input$phi3, A), rep(input$phi4, A)), A, P, byrow = FALSE),
+    # Drug-resistance parameters
+    zetaR =  matrix(1, A, P),
+    pR      = input$pR,
+    eta     = matrix(7/input$etaa, A, P),
+    gammaR = matrix(7/input$ggammaR, A, P) 
     ))
   
   
+  # Initial for Non-resistant Model
   y0react <- reactive({
     M0    <- rep(1, P)
     V0    <- input$V0 * Pop
@@ -616,7 +1051,7 @@ server <- function(input, output) {
     R0    <- input$R0 * Pop
     CInc0 <- matrix(0, A, P)
     S0    <- (Pop - V0 - R0)
-    
+
     c(
       M0,
       as.vector(S0),
@@ -631,19 +1066,63 @@ server <- function(input, output) {
     )
   })
   
+  # Initial for Resistant Model
+  y0reactR <- reactive({
+    M0    <- rep(1, P)
+    V0    <- input$V0 * Pop
+    E0    <- matrix(1, A, P)
+    A0    <- matrix(1, A, P)
+    CnT0  <- matrix(1, A, P)
+    # CT0   <- matrix(rep(Incidence_data[1, ] / A, A), A, P, byrow = TRUE)
+    CT0   <-  matrix(1, A, P)
+    Tm0   <- matrix(1, A, P)
+    R0    <- input$R0 * Pop
+    CInc0 <- matrix(0, A, P)
+    S0    <- (Pop - V0 - R0)
+    CTR   <- matrix(1, A, P)
+    
+    c(
+      M0,
+      as.vector(S0),
+      as.vector(V0),
+      as.vector(E0),
+      as.vector(A0),
+      as.vector(CnT0),
+      as.vector(CT0),
+      as.vector(Tm0),
+      as.vector(R0),
+      as.vector(CInc0), 
+      as.vector(CTR)
+    )
+  })
+  
   rhoreact = reactive({c(input$rho_rep1, input$rho_rep2, input$rho_rep3, input$rho_rep4)})
-  outR = reactive(ode(y = y0react(),times = times,func = rhs_vec,parms = parametersR(),method = "lsoda" ))
+  # Non-Resistant
+  outNR = reactive(ode(y = y0react(),times = times,func = rhs_vec,parms = parametersR(),method = "lsoda" ))
 
-  output$Northeast <- renderPlot({ plotfunc_reg(run = outR(), region = "Northeast") })
-  output$Midwest   <- renderPlot({ plotfunc_reg(run = outR(), region = "Midwest") })
-  output$West      <- renderPlot({  plotfunc_reg(run = outR(), region = "West") })
-  output$South     <- renderPlot({ plotfunc_reg(run = outR(), region = "South") })
+  output$Northeast_NR <- renderPlot({ plotfunc_reg(run = outNR(), region = "Northeast") })
+  output$Midwest_NR   <- renderPlot({ plotfunc_reg(run = outNR(), region = "Midwest") })
+  output$West_NR      <- renderPlot({  plotfunc_reg(run = outNR(), region = "West") })
+  output$South_NR     <- renderPlot({ plotfunc_reg(run = outNR(), region = "South") })
   
-  output$Age0 <- renderPlot({  plotfunc_age(run = outR(), age = '0') })
-  output$Age1 <- renderPlot({  plotfunc_age(run = outR(), age = '1') })
-  output$Age2 <- renderPlot({  plotfunc_age(run = outR(), age = '2') })
+  output$Age0_NR <- renderPlot({  plotfunc_age(run = outNR(), age = '0') })
+  output$Age1_NR <- renderPlot({  plotfunc_age(run = outNR(), age = '1') })
+  output$Age2_NR <- renderPlot({  plotfunc_age(run = outNR(), age = '2') })
   
-  output$Incidence <- renderPlot({  plot_incidence(run=outR(), rho =rhoreact())})
+  # Resistant
+  outR = reactive(ode(y = y0reactR(),times = times,func = rhs_vec_res,parms = parametersR(),method = "lsoda" ))
+  
+  output$Northeast_R <- renderPlot({ plotfunc_reg_res(run = outR(), region = "Northeast") })
+  output$Midwest_R   <- renderPlot({ plotfunc_reg_res(run = outR(), region = "Midwest") })
+  output$West_R      <- renderPlot({  plotfunc_reg_res(run = outR(), region = "West") })
+  output$South_R     <- renderPlot({ plotfunc_reg_res(run = outR(), region = "South") })
+  
+  output$Age0_R <- renderPlot({  plotfunc_age_res(run = outR(), age = '0') })
+  output$Age1_R <- renderPlot({  plotfunc_age_res(run = outR(), age = '1') })
+  output$Age2_R <- renderPlot({  plotfunc_age_res(run = outR(), age = '2') })
+  
+  # Incidence
+  output$Incidence <- renderPlot({  plot_incidence(run=outNR(), run_res = outR(), rho =rhoreact())})
   
 }
 
